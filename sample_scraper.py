@@ -49,7 +49,7 @@ def write_data_from_tune(tune, f):
     tunearr = tune.split("\n")
     m = None
     k = None
-    q = None
+    q = None  # No use of these for now
     l = None
     v = None
     x = None
@@ -82,8 +82,8 @@ def write_data_from_tune(tune, f):
                 pass
 
 
-# get_tunes(generator_folk_url_base,
-#           MAX_GENERATOR_FOLK_TUNES,
+# get_tunes(generator_folk_url_base,  # This one doesn't work on the website.
+#           MAX_GENERATOR_FOLK_TUNES,  # TODO: Make it work
 #           500,
 #           generator_output_path,
 #           needs_loading=True,
