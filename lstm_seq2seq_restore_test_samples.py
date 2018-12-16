@@ -6,7 +6,7 @@ from keras.layers import Input
 import numpy as np
 
 latent_dim = 256
-data_path = 'data/tunes.txt'
+data_path = 'data/test_set.txt'
 
 input_texts = []
 target_texts = []
