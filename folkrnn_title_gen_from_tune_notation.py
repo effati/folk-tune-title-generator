@@ -1,22 +1,22 @@
 import codecs
-import json
+import difflib
 
 from keras.models import Model
 from keras.layers import Input, LSTM, Dense
 import numpy as np
 
-batch_size = 64  # Batch size for training.
-epochs = 100  # Number of epochs to train for.
-latent_dim = 256  # Latent dimensionality of the encoding space.
-#num_samples = 20000  # Number of samples to train on.
+batch_size = 64
+epochs = 100
+latent_dim = 256
 max_string = 200
 
 data_path = 'data/tunes.txt'
+test_set_output_path = 'data/test_set.txt'
 
-# Vectorize the data.
 input_texts = []
 target_texts = []
 existing_titles = set()
+tunes = {}
 input_characters = set()
 target_characters = set()
 with codecs.open(data_path, 'r', encoding='utf-8') as f:
@@ -28,7 +28,10 @@ for i in xrange(0, len(lines)-1, chunk_size):
     target_text = chunk[0].split('T:')[1].strip()
     input_text = ''.join(chunk[1:4])[:max_string].strip()
     if target_text in existing_titles:
-        continue
+        distance = difflib.SequenceMatcher(None, tunes[target_text].lower(), input_text.lower()).ratio()
+        if distance > 0.6:
+            continue
+    tunes[target_text] = input_text
     existing_titles.add(target_text)
     target_text = '\t' + target_text + '\n'
     input_texts.append(input_text)
@@ -45,8 +48,17 @@ np.random.shuffle(input_texts)
 np.random.set_state(rng_state)
 np.random.shuffle(target_texts)
 
-#input_texts = input_texts[:num_samples]
-#target_texts = target_texts[:num_samples]
+test_ratio = int(len(input_texts) * 0.9)
+test_set_input = input_texts[test_ratio:]
+test_set_target = target_texts[test_ratio:]
+
+with codecs.open(test_set_output_path, 'w+', encoding='utf-8') as f:
+    for tune in range(len(test_set_input)):
+        f.write("T:{}\n".format(test_set_target[tune].strip()))
+        f.write("{}".format(test_set_input[tune].strip()))
+
+input_texts = input_texts[:test_ratio]
+target_texts = target_texts[:test_ratio]
 
 input_characters = sorted(list(input_characters))
 target_characters = sorted(list(target_characters))
@@ -55,21 +67,15 @@ num_decoder_tokens = len(target_characters)
 max_encoder_seq_length = max([len(txt) for txt in input_texts])
 max_decoder_seq_length = max([len(txt) for txt in target_texts])
 
-print('Number of samples:', len(input_texts))
-print('Number of unique input tokens:', num_encoder_tokens)
-print('Number of unique output tokens:', num_decoder_tokens)
-print('Max sequence length for inputs:', max_encoder_seq_length)
-print('Max sequence length for outputs:', max_decoder_seq_length)
-
 input_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
 target_token_index = dict(
     [(char, i) for i, char in enumerate(target_characters)])
-
-token_index_target_path = "data/token_index.txt"
-with codecs.open(token_index_target_path, 'w+', encoding='utf-8') as f:
-    json.dump(target_token_index, f)
-print("Token index successfully dumped into '{}'".format(token_index_target_path))
+#
+# token_index_target_path = "data/token_index.txt"
+# with codecs.open(token_index_target_path, 'w+', encoding='utf-8') as f:
+#     json.dump(target_token_index, f)
+# print("Token index successfully dumped into '{}'".format(token_index_target_path))
 
 encoder_input_data = np.zeros(
     (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
@@ -93,7 +99,6 @@ encoder_inputs = Input(shape=(None, num_encoder_tokens))
 encoder = LSTM(latent_dim, return_state=True)
 encoder_outputs, state_h, state_c = encoder(encoder_inputs)
 encoder_states = [state_h, state_c]
-
 
 decoder_inputs = Input(shape=(None, num_decoder_tokens))
 

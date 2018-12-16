@@ -4,11 +4,7 @@ from keras.models import Model, load_model
 from keras.layers import Input
 import numpy as np
 
-batch_size = 64  # Batch size for training.
-epochs = 100  # Number of epochs to train for.
-latent_dim = 256  # Latent dimensionality of the encoding space.
-num_samples = 10000  # Number of samples to train on.
-obligatory_output_token_size = 47
+latent_dim = 256
 data_path = 'data/tunes.txt'
 
 input_texts = []
@@ -28,24 +24,16 @@ for i in xrange(0, len(lines)-1, chunk_size):
             target_characters.add(char)
 
 
-def get_samples(i):
-        temp = ''.join(lines[i:i + chunk_size])
-        input_text = temp[:min(200, len(temp))].strip()
-
-        for char in input_text:
-            if char not in input_characters:
-                if len(input_characters) == obligatory_output_token_size:
-                    return
-                input_characters.add(char)
-        input_texts.append(input_text)
-
-
 lines = codecs.open("data/scraped_samples_full.txt", 'r', encoding='utf-8').read().split('\n')
 chunk_size = 4
 for i in xrange(0, len(lines) - 1, chunk_size):
-    get_samples(i)
-    if len(input_characters) >= obligatory_output_token_size:
-        break
+    temp = ''.join(lines[i:i + chunk_size])
+    input_text = temp[:min(200, len(temp))].strip()
+
+    for char in input_text:
+        if char not in input_characters:
+            input_characters.add(char)
+    input_texts.append(input_text)
 
 input_characters = sorted(list(input_characters))
 target_characters = sorted(list(target_characters))
@@ -53,12 +41,6 @@ num_encoder_tokens = len(input_characters)
 num_decoder_tokens = len(target_characters)
 max_encoder_seq_length = max([len(txt) for txt in input_texts])
 max_decoder_seq_length = max([len(txt) for txt in target_texts])
-
-print('Number of samples:', len(input_texts))
-print('Number of unique input tokens:', num_encoder_tokens)
-print('Number of unique output tokens:', num_decoder_tokens)
-print('Max sequence length for inputs:', max_encoder_seq_length)
-print('Max sequence length for outputs:', max_decoder_seq_length)
 
 input_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
@@ -133,13 +115,8 @@ with open('output/lstm_output_report.txt', 'w+') as f:
         input_seq = encoder_input_data[seq_index: seq_index + 1]
         try:
             decoded_sentence = decode_sequence(input_seq)
-#            print('-')
-#            print('Input sentence:', input_texts[seq_index])
-#            print('Decoded sentence:', decoded_sentence)
-#            f.write('Input sentence: {}\n'.format(input_texts[seq_index]))
-#            f.write('Decoded sentence: {}\n'.format(decoded_sentence))
-            f.write('{}\\\\'.format('-' * 50))
-            f.write("Title: {}\\\\".format(decoded_sentence.strip()))
-            f.write("{}\n\\\\".format(input_texts[seq_index]))
+            f.write('Input sentence: {}\n'.format(input_texts[seq_index].strip()))
+            f.write('Decoded sentence: {}\n'.format(decoded_sentence.strip()))
+            f.write('{}\n'.format('-' * 50))
         except ValueError:
             pass
